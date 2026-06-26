@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Task Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f4;
+    --bg-tertiary: #f0efed;
+    --text-primary: #1a1a18;
+    --text-secondary: #5a5a57;
+    --text-tertiary: #8a8a86;
+    --border-light: rgba(0,0,0,0.1);
+    --border-med: rgba(0,0,0,0.18);
+    --border-strong: rgba(0,0,0,0.28);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1c;
+      --bg-secondary: #2a2a28;
+      --bg-tertiary: #242422;
+      --text-primary: #f0efed;
+      --text-secondary: #a8a8a4;
+      --text-tertiary: #6a6a66;
+      --border-light: rgba(255,255,255,0.08);
+      --border-med: rgba(255,255,255,0.14);
+      --border-strong: rgba(255,255,255,0.22);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── TOP HEADER ── */
+  .page-header {
+    background: var(--bg-primary);
+    border-bottom: 0.5px solid var(--border-light);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 28px;
+  }
+  .header-brand h1 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+  }
+  .nav-item {
+    position: relative;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-family: var(--font);
+    white-space: nowrap;
+    transition: background 0.12s, color 0.12s;
+  }
+  .nav-btn:hover, .nav-btn.open {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  .nav-btn i { font-size: 14px; }
+  .nav-btn .chev { font-size: 12px; opacity: 0.6; }
+
+  /* ── DROPDOWN ── */
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-med);
+    border-radius: var(--radius-lg);
+    padding: 8px;
+    min-width: 200px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    z-index: 200;
+  }
+  .dropdown.open { display: block; }
+  .dd-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 6px 8px 4px;
+  }
+  .dd-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .dd-item:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .dd-item.active { background: var(--bg-secondary); color: var(--text-primary); font-weight: 500; }
+  .dd-item .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dd-divider { height: 0.5px; background: var(--border-light); margin: 6px 0; }
+  .dd-check { margin-left: auto; font-size: 13px; opacity: 0; }
+  .dd-item.active .dd-check { opacity: 1; }
+
+  .header-right {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2,1fr); } }
+  .mc {
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    border: 0.5px solid var(--border-light);
+  }
+  .mc .lbl { font-size: 11px; color: var(--text-tertiary); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .mc .val { font-size: 24px; font-weight: 500; color: var(--text-primary); }
+  .mc .sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .ptitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ptitle i { font-size: 16px; color: var(--text-secondary); }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-grid .field label {
+    font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;
+  }
+  .form-grid .field input,
+  .form-grid .field select,
+  .form-grid .field textarea {
+    width: 100%; font-size: 13px; padding: 8px 10px;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-med);
+    background: var(--bg-secondary); color: var(--text-primary);
+    outline: none; font-family: var(--font); transition: border-color 0.15s;
+  }
+  .form-grid .field input:focus,
+  .form-grid .field select:focus,
+  .form-grid .field textarea:focus { border-color: var(--border-strong); }
+  .form-grid .field textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+  .btn-add {
+    width: 100%; padding: 9px 18px; font-size: 13px; font-weight: 500;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-med);
+    background: var(--bg-primary); color: var(--text-primary);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 6px; transition: background 0.15s; font-family: var(--font);
+  }
+  .btn-add:hover { background: var(--bg-secondary); }
+
+  /* ── ACTIVE FILTERS BAR ── */
+  .active-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    min-height: 28px;
+  }
+  .af-label { font-size: 12px; color: var(--text-tertiary); }
+  .af-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 500;
+    padding: 3px 10px; border-radius: 100px;
+    background: var(--bg-secondary); color: var(--text-secondary);
+    border: 0.5px solid var(--border-light);
+  }
+  .af-chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* ── TABLE ── */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; min-width: 700px; }
+  th {
+    font-size: 11px; font-weight: 500; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 7px 10px; border-bottom: 0.5px solid var(--border-light);
+    text-align: left; white-space: nowrap; background: var(--bg-primary);
+  }
+  td {
+    padding: 10px 10px; border-bottom: 0.5px solid var(--border-light);
+    color: var(--text-primary); vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 500;
+    padding: 2px 9px; border-radius: 100px; white-space: nowrap;
+  }
+  .p-Critical { background: #FCEBEB; color: #A32D2D; }
+  .p-High     { background: #FAEEDA; color: #854F0B; }
+  .p-Medium   { background: #E6F1FB; color: #185FA5; }
+  .p-Low      { background: #EAF3DE; color: #3B6D11; }
+  .prog-wrap { display: flex; align-items: center; gap: 7px; }
+  .prog-bg { flex: 1; height: 5px; background: var(--bg-secondary); border-radius: 99px; min-width: 40px; border: 0.5px solid var(--border-light); }
+  .prog-fill { height: 5px; border-radius: 99px; transition: width 0.3s; }
+  .rate-inp {
+    width: 46px; font-size: 12px; text-align: center; padding: 3px 4px;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-med);
+    background: var(--bg-secondary); color: var(--text-primary); font-family: var(--font);
+  }
+  .note-txt { font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; word-break: break-word; }
+  .dur-txt { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+  .btn-del {
+    background: none; border: none; color: var(--text-tertiary);
+    cursor: pointer; font-size: 15px; padding: 3px 6px; border-radius: 4px;
+    font-family: var(--font); transition: all 0.12s;
+  }
+  .btn-del:hover { color: #A32D2D; background: #FCEBEB; }
+  .empty { text-align: center; color: var(--text-tertiary); font-size: 13px; padding: 2.5rem 0; }
+</style>
+</head>
+<body>
+
+<!-- ── TOP HEADER ── -->
+<div class="page-header">
+  <div class="header-brand">
+    <i class="ti ti-layout-dashboard" style="font-size:20px;color:#7F77DD"></i>
+    <h1>Task Dashboard</h1>
+  </div>
+
+  <nav class="header-nav">
+
+    <!-- Company filter dropdown -->
+    <div class="nav-item" id="nav-company">
+      <button class="nav-btn" onclick="toggleNav('nav-company')">
+        <i class="ti ti-building"></i>
+        <span id="nav-company-label">All companies</span>
+        <i class="ti ti-chevron-down chev"></i>
+      </button>
+      <div class="dropdown" id="dd-company">
+        <div class="dd-label">Filter by company</div>
+        <div class="dd-item active" onclick="setFilter('company','All',this)" data-val="All">
+          <span class="dot" style="background:#888780"></span> All companies
+          <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-divider"></div>
+        <div class="dd-item" onclick="setFilter('company','High Social',this)" data-val="High Social">
+          <span class="dot" style="background:#7F77DD"></span> High Social
+          <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setFilter('company','Cloutify',this)" data-val="Cloutify">
+          <span class="dot" style="background:#1D9E75"></span> Cloutify
+          <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setFilter('company','Cross-Functional',this)" data-val="Cross-Functional">
+          <span class="dot" style="background:#BA7517"></span> Cross-Functional
+          <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setFilter('company','Others',this)" data-val="Others">
+          <span class="dot" style="background:#888780"></span> Others
+          <i class="ti ti-check dd-check"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task type filter dropdown -->
+    <div class="nav-item" id="nav-type">
+      <button class="nav-btn" onclick="toggleNav('nav-type')">
+        <i class="ti ti-repeat"></i>
+        <span id="nav-type-label">All types</span>
+        <i class="ti ti-chevron-down chev"></i>
+      </button>
+      <div class="dropdown" id="dd-type">
+        <div class="dd-label">Filter by task type</div>
+        <div class="dd-item active" onclick="setFilter('type','All',this)" data-val="All">All types <i class="ti ti-check dd-check"></i></div>
+        <div class="dd-divider"></div>
+        <div class="dd-item" onclick="setFilter('type','One-Time',this)" data-val="One-Time">One-Time <i class="ti ti-check dd-check"></i></div>
+        <div class="dd-item" onclick="setFilter('type','Daily',this)" data-val="Daily">Daily <i class="ti ti-check dd-check"></i></div>
+        <div class="dd-item" onclick="setFilter('type','Weekly',this)" data-val="Weekly">Weekly <i class="ti ti-check dd-check"></i></div>
+        <div class="dd-item" onclick="setFilter('type','Biweekly',this)" data-val="Biweekly">Biweekly <i class="ti ti-check dd-check"></i></div>
+        <div class="dd-item" onclick="setFilter('type','Monthly',this)" data-val="Monthly">Monthly <i class="ti ti-check dd-check"></i></div>
+        <div class="dd-item" onclick="setFilter('type','Quarterly',this)" data-val="Quarterly">Quarterly <i class="ti ti-check dd-check"></i></div>
+      </div>
+    </div>
+
+    <!-- Sort dropdown -->
+    <div class="nav-item" id="nav-sort">
+      <button class="nav-btn" onclick="toggleNav('nav-sort')">
+        <i class="ti ti-arrows-sort"></i>
+        <span id="nav-sort-label">Sort: Date</span>
+        <i class="ti ti-chevron-down chev"></i>
+      </button>
+      <div class="dropdown" id="dd-sort">
+        <div class="dd-label">Sort tasks by</div>
+        <div class="dd-item active" onclick="setSort('date',this)" data-val="date">
+          <i class="ti ti-calendar" style="font-size:14px"></i> Date <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setSort('company',this)" data-val="company">
+          <i class="ti ti-building" style="font-size:14px"></i> Company <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setSort('priority',this)" data-val="priority">
+          <i class="ti ti-alert-circle" style="font-size:14px"></i> Priority <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setSort('completion',this)" data-val="completion">
+          <i class="ti ti-chart-bar" style="font-size:14px"></i> Completion <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setSort('name',this)" data-val="name">
+          <i class="ti ti-abc" style="font-size:14px"></i> Name <i class="ti ti-check dd-check"></i>
+        </div>
+        <div class="dd-item" onclick="setSort('type',this)" data-val="type">
+          <i class="ti ti-repeat" style="font-size:14px"></i> Task type <i class="ti ti-check dd-check"></i>
+        </div>
+      </div>
+    </div>
+
+  </nav>
+
+  <div class="header-right" id="header-date"></div>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="container">
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="charts-row">
+    <div class="panel" style="margin-bottom:0">
+      <div class="ptitle"><i class="ti ti-chart-bar"></i> Completion by priority</div>
+      <div style="position:relative;width:100%;height:180px">
+        <canvas id="barChart" role="img" aria-label="Bar chart showing average completion rate per priority level"></canvas>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:0">
+      <div class="ptitle"><i class="ti ti-chart-donut"></i> Tasks by company</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="position:relative;width:140px;height:140px;flex-shrink:0">
+          <canvas id="donutChart" role="img" aria-label="Donut chart showing task distribution by company"></canvas>
+        </div>
+        <div id="donutLegend" style="font-size:12px;flex:1"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:20px"></div>
+
+  <div class="panel">
+    <div class="ptitle"><i class="ti ti-plus"></i> Add new task</div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Task name</label>
+        <input type="text" id="inp-name" placeholder="e.g. Review escalated tickets" />
+      </div>
+      <div class="field">
+        <label>Company</label>
+        <select id="inp-company">
+          <option value="High Social">High Social</option>
+          <option value="Cloutify">Cloutify</option>
+          <option value="Cross-Functional">Cross-Functional</option>
+          <option value="Others">Others</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Priority</label>
+        <select id="inp-priority">
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium" selected>Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Target date</label>
+        <input type="date" id="inp-date" />
+      </div>
+      <div class="field">
+        <label>Task type</label>
+        <select id="inp-type">
+          <option value="One-Time">One-Time</option>
+          <option value="Daily">Daily</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Biweekly">Biweekly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Quarterly">Quarterly</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Completion rate (%)</label>
+        <input type="number" id="inp-rate" min="0" max="100" value="0" />
+      </div>
+      <div class="field">
+        <label>Start time</label>
+        <input type="time" id="inp-start" />
+      </div>
+      <div class="field">
+        <label>End time</label>
+        <input type="time" id="inp-end" />
+      </div>
+      <div class="field full">
+        <label>Notes / comments</label>
+        <textarea id="inp-note" placeholder="Add any important details or comments here..."></textarea>
+      </div>
+      <div class="field full">
+        <button class="btn-add" onclick="addTask()">
+          <i class="ti ti-plus"></i> Add task
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle"><i class="ti ti-list-check"></i> All tasks</div>
+
+    <!-- Active filter chips -->
+    <div class="active-filters" id="active-filters"></div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:21%">Task</th>
+            <th style="width:13%">Company</th>
+            <th style="width:10%">Priority</th>
+            <th style="width:10%">Type</th>
+            <th style="width:11%">Target date</th>
+            <th style="width:12%">Time / duration</th>
+            <th style="width:15%">Completion</th>
+            <th style="width:8%"></th>
+          </tr>
+        </thead>
+        <tbody id="task-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const COMPANY_COLORS = {
+    "High Social":      { bg:"#EEEDFE", text:"#3C3489", chart:"#7F77DD" },
+    "Cloutify":         { bg:"#E1F5EE", text:"#085041", chart:"#1D9E75" },
+    "Cross-Functional": { bg:"#FAEEDA", text:"#633806", chart:"#BA7517" },
+    "Others":           { bg:"#F1EFE8", text:"#444441", chart:"#888780" }
+  };
+  const PRIORITY_ORDER = { Critical:0, High:1, Medium:2, Low:3 };
+  const PRIORITY_COLORS = { Critical:"#E24B4A", High:"#EF9F27", Medium:"#378ADD", Low:"#639922" };
+
+  let tasks = JSON.parse(localStorage.getItem('td_tasks') || '[]');
+  let nextId = parseInt(localStorage.getItem('td_nextId') || '1');
+  let sortKey = 'date';
+  let filterCompany = 'All';
+  let filterType = 'All';
+  let barInst = null, donutInst = null;
+
+  function save() {
+    localStorage.setItem('td_tasks', JSON.stringify(tasks));
+    localStorage.setItem('td_nextId', String(nextId));
+  }
+
+  function barColor(r) {
+    return r >= 80 ? "#639922" : r >= 50 ? "#378ADD" : r >= 25 ? "#EF9F27" : "#E24B4A";
+  }
+
+  function calcDur(s, e) {
+    if (!s || !e) return '';
+    const [sh,sm] = s.split(':').map(Number);
+    const [eh,em] = e.split(':').map(Number);
+    let mins = (eh*60+em)-(sh*60+sm);
+    if (mins <= 0) return '';
+    const h = Math.floor(mins/60), m = mins%60;
+    return h > 0 ? (m > 0 ? h+'h '+m+'m' : h+'h') : m+'m';
+  }
+
+  function fmt12(t) {
+    if (!t) return '';
+    const [h,m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hh = h % 12 || 12;
+    return hh+':'+(m<10?'0':'')+m+' '+ampm;
+  }
+
+  // ── DROPDOWN TOGGLE ──
+  function toggleNav(id) {
+    const allNavs = ['nav-company','nav-type','nav-sort'];
+    allNavs.forEach(n => {
+      const dd = document.getElementById('dd-'+n.replace('nav-',''));
+      const btn = document.querySelector('#'+n+' .nav-btn');
+      if (n === id) {
+        const isOpen = dd.classList.contains('open');
+        dd.classList.toggle('open', !isOpen);
+        btn.classList.toggle('open', !isOpen);
+      } else {
+        dd.classList.remove('open');
+        btn.classList.remove('open');
+      }
+    });
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.nav-item')) {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('open'));
+    }
+  });
+
+  function setSort(k, el) {
+    sortKey = k;
+    document.querySelectorAll('#dd-sort .dd-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    const labels = { date:'Date', company:'Company', priority:'Priority', completion:'Completion', name:'Name', type:'Task type' };
+    document.getElementById('nav-sort-label').textContent = 'Sort: '+labels[k];
+    document.getElementById('dd-sort').classList.remove('open');
+    document.querySelector('#nav-sort .nav-btn').classList.remove('open');
+    render();
+  }
+
+  function setFilter(dim, val, el) {
+    if (dim === 'company') {
+      filterCompany = val;
+      document.querySelectorAll('#dd-company .dd-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('nav-company-label').textContent = val === 'All' ? 'All companies' : val;
+      document.getElementById('dd-company').classList.remove('open');
+      document.querySelector('#nav-company .nav-btn').classList.remove('open');
+    } else {
+      filterType = val;
+      document.querySelectorAll('#dd-type .dd-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('nav-type-label').textContent = val === 'All' ? 'All types' : val;
+      document.getElementById('dd-type').classList.remove('open');
+      document.querySelector('#nav-type .nav-btn').classList.remove('open');
+    }
+    render();
+  }
+
+  function renderActiveFilters() {
+    const wrap = document.getElementById('active-filters');
+    const chips = [];
+    if (filterCompany !== 'All') {
+      const cc = COMPANY_COLORS[filterCompany] || COMPANY_COLORS['Others'];
+      chips.push(`<span class="af-chip"><span class="dot" style="background:${cc.chart}"></span>${filterCompany}</span>`);
+    }
+    if (filterType !== 'All') {
+      chips.push(`<span class="af-chip"><i class="ti ti-repeat" style="font-size:11px"></i>${filterType}</span>`);
+    }
+    const filtered = getFiltered();
+    if (chips.length) {
+      wrap.innerHTML = `<span class="af-label">Showing:</span> ${chips.join('')} <span class="af-label" style="margin-left:4px">${filtered.length} task${filtered.length !== 1 ? 's' : ''}</span>`;
+    } else {
+      wrap.innerHTML = `<span class="af-label">${filtered.length} task${filtered.length !== 1 ? 's' : ''} total</span>`;
+    }
+  }
+
+  function getFiltered() {
+    return tasks.filter(t => {
+      if (filterCompany !== 'All' && t.company !== filterCompany) return false;
+      if (filterType !== 'All' && t.type !== filterType) return false;
+      return true;
+    });
+  }
+
+  function getSorted(arr) {
+    return [...arr].sort((a,b) => {
+      if (sortKey==='date')       return (a.date||'9999').localeCompare(b.date||'9999');
+      if (sortKey==='priority')   return PRIORITY_ORDER[a.priority]-PRIORITY_ORDER[b.priority];
+      if (sortKey==='completion') return b.rate-a.rate;
+      if (sortKey==='name')       return a.name.localeCompare(b.name);
+      if (sortKey==='company')    return a.company.localeCompare(b.company);
+      if (sortKey==='type')       return a.type.localeCompare(b.type);
+      return 0;
+    });
+  }
+
+  function addTask() {
+    const name = document.getElementById('inp-name').value.trim();
+    if (!name) { document.getElementById('inp-name').focus(); return; }
+    const company  = document.getElementById('inp-company').value;
+    const priority = document.getElementById('inp-priority').value;
+    const date     = document.getElementById('inp-date').value;
+    const type     = document.getElementById('inp-type').value;
+    const rate     = Math.min(100, Math.max(0, parseInt(document.getElementById('inp-rate').value)||0));
+    const start    = document.getElementById('inp-start').value;
+    const end      = document.getElementById('inp-end').value;
+    const note     = document.getElementById('inp-note').value.trim();
+    tasks.push({ id:nextId++, name, company, priority, date, type, rate, start, end, note });
+    save();
+    document.getElementById('inp-name').value  = '';
+    document.getElementById('inp-rate').value  = '0';
+    document.getElementById('inp-start').value = '';
+    document.getElementById('inp-end').value   = '';
+    document.getElementById('inp-note').value  = '';
+    render();
+  }
+
+  function deleteTask(id) {
+    if (!confirm('Remove this task?')) return;
+    tasks = tasks.filter(t => t.id !== id);
+    save();
+    render();
+  }
+
+  function updateRate(id, v) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.rate = Math.min(100, Math.max(0, parseInt(v)||0)); save(); render(); }
+  }
+
+  function renderMetrics() {
+    const total   = tasks.length;
+    const done    = tasks.filter(t => t.rate===100).length;
+    const overall = total ? Math.round(tasks.reduce((s,t) => s+t.rate,0)/total) : 0;
+    const crit    = tasks.filter(t => t.priority==='Critical' && t.rate<100).length;
+    const today   = new Date().toISOString().slice(0,10);
+    const overdue = tasks.filter(t => t.date && t.date<today && t.rate<100).length;
+    document.getElementById('metrics').innerHTML = `
+      <div class="mc"><div class="lbl">Total tasks</div><div class="val">${total}</div><div class="sub">${done} completed</div></div>
+      <div class="mc"><div class="lbl">Overall progress</div><div class="val">${overall}%</div><div class="sub">avg completion</div></div>
+      <div class="mc"><div class="lbl">Critical pending</div><div class="val" style="color:${crit>0?'#A32D2D':'inherit'}">${crit}</div><div class="sub">need attention</div></div>
+      <div class="mc"><div class="lbl">Overdue</div><div class="val" style="color:${overdue>0?'#854F0B':'inherit'}">${overdue}</div><div class="sub">past target date</div></div>
+    `;
+  }
+
+  function renderTable() {
+    const rows = getSorted(getFiltered());
+    const tbody = document.getElementById('task-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No tasks match the current filters.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(t => {
+      const cc      = COMPANY_COLORS[t.company] || COMPANY_COLORS['Others'];
+      const dur     = calcDur(t.start, t.end);
+      const timeStr = t.start ? fmt12(t.start)+(t.end?' - '+fmt12(t.end):'') : '';
+      const dateStr = t.date ? new Date(t.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '--';
+      const bc      = barColor(t.rate);
+      const isRec   = t.type !== 'One-Time';
+      return `<tr>
+        <td>
+          <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${t.name}</div>
+          ${t.note?`<div class="note-txt"><i class="ti ti-note" style="font-size:11px"></i> ${t.note}</div>`:''}
+        </td>
+        <td><span class="badge" style="background:${cc.bg};color:${cc.text}">${t.company}</span></td>
+        <td><span class="badge p-${t.priority}">${t.priority}</span></td>
+        <td><span class="badge" style="${isRec?'background:#E6F1FB;color:#185FA5':'background:#F1EFE8;color:#444441'}">${t.type}</span></td>
+        <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap">${dateStr}</td>
+        <td>
+          <div style="font-size:12px;color:var(--text-secondary);white-space:nowrap">${timeStr||'--'}</div>
+          ${dur?`<div class="dur-txt"><i class="ti ti-clock" style="font-size:11px"></i> ${dur}</div>`:''}
+        </td>
+        <td>
+          <div class="prog-wrap">
+            <div class="prog-bg"><div class="prog-fill" style="width:${t.rate}%;background:${bc}"></div></div>
+            <input class="rate-inp" type="number" min="0" max="100" value="${t.rate}" onchange="updateRate(${t.id},this.value)" />
+            <span style="font-size:11px;color:var(--text-tertiary)">%</span>
+          </div>
+        </td>
+        <td><button class="btn-del" onclick="deleteTask(${t.id})" title="Remove task"><i class="ti ti-trash"></i></button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderCharts() {
+    const priorities = ['Critical','High','Medium','Low'];
+    const avgByP = priorities.map(p => {
+      const g = tasks.filter(t => t.priority===p);
+      return g.length ? Math.round(g.reduce((s,t)=>s+t.rate,0)/g.length) : 0;
+    });
+
+    if (barInst) barInst.destroy();
+    barInst = new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: priorities,
+        datasets: [{ label:'Avg completion %', data:avgByP, backgroundColor:priorities.map(p=>PRIORITY_COLORS[p]), borderRadius:4, borderSkipped:false }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales:{
+          y:{ min:0, max:100, ticks:{ callback:v=>v+'%', font:{size:11} }, grid:{ color:'rgba(120,120,120,0.08)' } },
+          x:{ ticks:{ font:{size:11} }, grid:{ display:false } }
+        }
+      }
+    });
+
+    const companies = ['High Social','Cloutify','Cross-Functional','Others'];
+    const counts  = companies.map(c => tasks.filter(t=>t.company===c).length);
+    const dLabels = companies.filter((_,i)=>counts[i]>0);
+    const dData   = counts.filter(v=>v>0);
+    const dColors = dLabels.map(c=>COMPANY_COLORS[c].chart);
+    const hasData = dData.length > 0;
+
+    if (donutInst) donutInst.destroy();
+    donutInst = new Chart(document.getElementById('donutChart'), {
+      type: 'doughnut',
+      data: {
+        labels: hasData ? dLabels : ['No tasks'],
+        datasets: [{ data:hasData?dData:[1], backgroundColor:hasData?dColors:['#D3D1C7'], borderWidth:2, borderColor:'transparent', hoverOffset:4 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>hasData?` ${ctx.label}: ${ctx.raw} task${ctx.raw!==1?'s':''}`:' No tasks yet' } } },
+        cutout:'65%'
+      }
+    });
+
+    document.getElementById('donutLegend').innerHTML = dLabels.map((c,i) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+        <span style="width:10px;height:10px;border-radius:2px;background:${dColors[i]};flex-shrink:0"></span>
+        <span style="color:var(--text-secondary)">${c}</span>
+        <span style="font-weight:500;margin-left:auto;padding-left:8px">${dData[i]}</span>
+      </div>
+    `).join('');
+  }
+
+  function render() {
+    renderMetrics();
+    renderActiveFilters();
+    renderTable();
+    renderCharts();
+  }
+
+  document.getElementById('inp-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  render();
+</script>
+</body>
+</html>
